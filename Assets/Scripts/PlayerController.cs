@@ -4,6 +4,8 @@ using UnityEngine.InputSystem; // New Input System
 [RequireComponent(typeof(Rigidbody2D), typeof(Collider2D), typeof(PlayerInput))]
 public class PlayerController : MonoBehaviour
 {
+
+    public Animator animator;
     [Header("Movement")]
     public float moveSpeed = 12f;
     public float acceleration = 60f;
@@ -61,6 +63,12 @@ public class PlayerController : MonoBehaviour
         // Flip sprite
         if (moveInput != 0)
             Flip(moveInput);
+
+        // Update animator
+        animator.SetFloat("HSpeed", Mathf.Abs(rb.linearVelocity.x));
+        animator.SetFloat("VSpeed", rb.linearVelocity.y);
+        animator.SetBool("IsGrounded", IsGrounded());
+
     }
 
     void FixedUpdate()
