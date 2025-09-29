@@ -295,12 +295,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 270360717}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: -10}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 905267679}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &270360721
 MonoBehaviour:
@@ -658,6 +658,7 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1552085324}
+  - {fileID: 270360720}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1111582071
@@ -2584,11 +2585,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Parallax
   layers:
   - prefab: {fileID: 1111582072}
-    parallaxFactor: 0
+    parallaxFactor: 0.75
   - prefab: {fileID: 1634506930}
     parallaxFactor: 0.5
   - prefab: {fileID: 152672330}
-    parallaxFactor: 0.75
+    parallaxFactor: 0.25
 --- !u!1 &1634506929
 GameObject:
   m_ObjectHideFlags: 0
@@ -2683,7 +2684,6 @@ SpriteRenderer:
 SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
-  - {fileID: 270360720}
   - {fileID: 1355721241}
   - {fileID: 1590400993}
   - {fileID: 905267679}
