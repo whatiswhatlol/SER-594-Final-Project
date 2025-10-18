@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.InputSystem; // New Input System
 
@@ -129,5 +130,13 @@ public class PlayerController : MonoBehaviour
         if (ctx.performed) jumpHeld = true;
 
         if (ctx.canceled) jumpPressed = false;
+    }
+
+    private void OnTriggerEnter2D(Collider2D other)
+    {
+        if (other.CompareTag("Hazards"))
+        {
+            Debug.Log("Player Hit!");
+        }
     }
 }

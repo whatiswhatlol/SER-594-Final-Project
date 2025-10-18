@@ -4,11 +4,7 @@
 TagManager:
   serializedVersion: 3
   tags:
-  - Spike
-  - Glue
-  - Ballista Arrow
-  - Sawblade
-  - Portal
+  - Hazards
   layers:
   - Default
   - TransparentFX
@@ -16,7 +12,7 @@ TagManager:
   - Terrain
   - Water
   - UI
-  - 
+  - Hazards
   - 
   - 
   - 
