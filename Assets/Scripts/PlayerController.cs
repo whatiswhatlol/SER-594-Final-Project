@@ -125,6 +125,8 @@ public class PlayerController : MonoBehaviour
 
     public void OnJump(InputAction.CallbackContext ctx)
     {
+        Debug.Log($"[Jump] ctx={ctx.phase} grounded={IsGrounded()}");
+
         if (ctx.started) jumpPressed = true;
         if (ctx.canceled) jumpHeld = false;
         if (ctx.performed) jumpHeld = true;
