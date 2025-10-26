@@ -1,9 +1,12 @@
 using UnityEngine;
+using UnityEngine.Assertions;
 
 public class PlayerBehavior : MonoBehaviour
 {
+    GameObject[] levels;
+    int currentLevel;
+
     PlayerController playerController;
-    Vector3 startPosition;
     float moveSpeed;
     float jumpForce;
     bool dead;
@@ -12,8 +15,21 @@ public class PlayerBehavior : MonoBehaviour
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
+        string[] levelNames = new string[]{
+            "Level 1 Spawn",
+            "Level 2 Spawn",
+        };
+        levels = new GameObject[2];
+        Assert.IsTrue(levels.Length == levelNames.Length);
+        for (int i = 0; i < levelNames.Length; i++)
+        {
+            levels[i] = GameObject.Find(levelNames[i]);
+            Assert.IsTrue(levels[i] != null);
+        }
+
+        currentLevel = 0;
+
         playerController = GetComponent<PlayerController>();
-        startPosition = transform.position;
         moveSpeed = playerController.moveSpeed;
         jumpForce = playerController.jumpForce;
     }
@@ -23,7 +39,7 @@ public class PlayerBehavior : MonoBehaviour
     {
         if (dead) {
              dead = false;
-             transform.position = startPosition;
+             transform.position = levels[currentLevel].transform.position;
         } else {
         	if (glued) {
 		    playerController.moveSpeed = 0.2f * moveSpeed;
@@ -48,7 +64,15 @@ public class PlayerBehavior : MonoBehaviour
                 glued = true;
                 break;
             case "Portal":
-                Debug.Log("pass level");
+                if (currentLevel == levels.Length - 1)
+                {
+                    Debug.Log("last level");
+                }
+                else
+                {
+                    currentLevel++;
+                    transform.position = levels[currentLevel].transform.position;
+                }
                 break;
         }
     }
