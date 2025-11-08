@@ -23,16 +23,17 @@ public class WeaponManager : MonoBehaviour
         Debug.Log($"Selected weapon: {weapons[index].weaponName}");
     }
 
-    public void HighlightWeapon(int index)
-    {
-    }
-
     public int GetWeaponIndexByAngle(float angle)
     {
         if (weapons.Count == 0) return 0;
         float slice = 360f / weapons.Count;
         int index = Mathf.FloorToInt((angle + 360f) % 360f / slice);
         return index;
+    }
+
+    public WeaponBase getWeaponByIndex(int index)
+    {
+        return weapons[index];
     }
 
     void Update()

@@ -1,11 +1,13 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 using DG.Tweening;
+using UnityEngine.UI;
 
 public class WeaponWheelController : MonoBehaviour
 {
     [Header("References")]
-    public CanvasGroup wheelUI;         
+    public CanvasGroup wheelUI;
+    public Image[] Select_Weapons;
     public WeaponManager weaponManager;
 
     [Header("Settings")]
@@ -51,10 +53,18 @@ public class WeaponWheelController : MonoBehaviour
         float angle = Mathf.Atan2(mousePos.y - center.y, mousePos.x - center.x) * Mathf.Rad2Deg;
 
         int index = weaponManager.GetWeaponIndexByAngle(angle);
-        weaponManager.HighlightWeapon(index);
-
+        HighlightWeapon(index);
         if (fireAction.WasPerformedThisFrame())
             weaponManager.SelectWeapon(index);
+    }
+
+    private void HighlightWeapon(int index)
+    {
+        foreach (Image img in Select_Weapons)
+        {
+            img.DOFade(0, 0.15f).SetEase(Ease.OutSine);
+        }
+        Select_Weapons[index].DOFade(0.95f,0.2f).SetEase(Ease.InSine);
     }
 
     private void OpenWheel()
@@ -68,7 +78,7 @@ public class WeaponWheelController : MonoBehaviour
         wheelUI.gameObject.SetActive(true);
         wheelUI.alpha = 0f;
 
-        wheelUI.DOFade(1f, fadeDuration).SetUpdate(true);
+        wheelUI.DOFade(0.95f, fadeDuration).SetUpdate(true);
     }
 
     private void CloseWheel()
