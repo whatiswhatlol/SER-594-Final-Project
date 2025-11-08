@@ -25,7 +25,6 @@ public class WeaponManager : MonoBehaviour
 
     public void HighlightWeapon(int index)
     {
-        // Optional: update UI highlight state
     }
 
     public int GetWeaponIndexByAngle(float angle)

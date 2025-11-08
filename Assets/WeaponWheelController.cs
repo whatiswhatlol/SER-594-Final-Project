@@ -5,7 +5,7 @@ using DG.Tweening;
 public class WeaponWheelController : MonoBehaviour
 {
     [Header("References")]
-    public CanvasGroup wheelUI;          // Add a CanvasGroup to your UI panel
+    public CanvasGroup wheelUI;         
     public WeaponManager weaponManager;
 
     [Header("Settings")]
@@ -15,7 +15,6 @@ public class WeaponWheelController : MonoBehaviour
     private bool isWheelOpen = false;
     private float originalTimeScale = 1f;
 
-    // Input actions
     private PlayerInput playerInput;
     private InputAction wheelAction;
     private InputAction fireAction;
@@ -25,10 +24,9 @@ public class WeaponWheelController : MonoBehaviour
     {
         playerInput = GetComponent<PlayerInput>();
 
-        // Input Actions: must exist in your Input Actions asset
-        wheelAction = playerInput.actions["Wheel"];   // e.g. Tab key
-        fireAction = playerInput.actions["Fire"];     // e.g. Left Mouse Button
-        pointAction = playerInput.actions["Point"];   // e.g. Mouse Position
+        wheelAction = playerInput.actions["Wheel"];   
+        fireAction = playerInput.actions["Fire"];    
+        pointAction = playerInput.actions["Point"];   
     }
 
     void OnEnable()
@@ -70,7 +68,6 @@ public class WeaponWheelController : MonoBehaviour
         wheelUI.gameObject.SetActive(true);
         wheelUI.alpha = 0f;
 
-        // Fade-in UI (independent of timescale)
         wheelUI.DOFade(1f, fadeDuration).SetUpdate(true);
     }
 
@@ -81,7 +78,6 @@ public class WeaponWheelController : MonoBehaviour
 
         Time.timeScale = originalTimeScale;
 
-        // Fade-out UI and disable when done
         wheelUI.DOFade(0f, fadeDuration)
                .SetUpdate(true)
                .OnComplete(() => wheelUI.gameObject.SetActive(false));
