@@ -1,9 +1,14 @@
 using UnityEngine;
+using UnityEngine.Assertions;
 
 public class PlayerBehavior : MonoBehaviour
 {
+    public GameObject[] levelSpawns;
+    public int currentLevel;
+    Vector3 spawn;
+
     PlayerController playerController;
-    Vector3 startPosition;
+    new Rigidbody2D rigidbody2D;
     float moveSpeed;
     float jumpForce;
     bool dead;
@@ -12,8 +17,18 @@ public class PlayerBehavior : MonoBehaviour
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
+        Assert.IsTrue(levelSpawns.Length != 0);
+        foreach (GameObject levelSpawn in levelSpawns) {
+            Assert.IsTrue(levelSpawn != null);
+        }
+
+        Assert.IsTrue(currentLevel < levelSpawns.Length);
+
+        spawn = levelSpawns[currentLevel].transform.position;
+        transform.position = spawn;
+
         playerController = GetComponent<PlayerController>();
-        startPosition = transform.position;
+        rigidbody2D = GetComponent<Rigidbody2D>();
         moveSpeed = playerController.moveSpeed;
         jumpForce = playerController.jumpForce;
     }
@@ -23,13 +38,15 @@ public class PlayerBehavior : MonoBehaviour
     {
         if (dead) {
              dead = false;
-             transform.position = startPosition;
+             transform.position = spawn;
         } else {
         	if (glued) {
-		    playerController.moveSpeed = 0.2f * moveSpeed;
+		    rigidbody2D.linearDamping = 20f;
+                    playerController.moveSpeed = 0.2f * moveSpeed;
 		    playerController.jumpForce = 0.0f;
 		} else {
-		    playerController.moveSpeed = moveSpeed;
+		    rigidbody2D.linearDamping = 0f;
+                    playerController.moveSpeed = moveSpeed;
 		    playerController.jumpForce = jumpForce;
 		}
         }
@@ -48,7 +65,19 @@ public class PlayerBehavior : MonoBehaviour
                 glued = true;
                 break;
             case "Portal":
-                Debug.Log("pass level");
+                if (currentLevel == levelSpawns.Length - 1)
+                {
+                    Debug.Log("last level");
+                }
+                else
+                {
+                    currentLevel++;
+                    spawn = levelSpawns[currentLevel].transform.position;
+                    transform.position = spawn;
+                }
+                break;
+            case "Checkpoint":
+                spawn = collider.transform.position;
                 break;
         }
     }

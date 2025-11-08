@@ -1,7 +1,7 @@
 using UnityEngine;
 using System;
 
-public class SawbladeBehavior : MonoBehaviour
+public class PlatformBehavior : MonoBehaviour
 {
     public float speed = 1.0f;
     Vector3 startPosition;
