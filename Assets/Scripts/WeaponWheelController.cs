@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using DG.Tweening;
+using UnityEngine.SceneManagement;
 
 public class WeaponWheelController : MonoBehaviour
 {
@@ -20,7 +21,7 @@ public class WeaponWheelController : MonoBehaviour
     public float angleOffsetDeg = 0f;
 
     [Tooltip("Flip angle direction to match clockwise UI layouts.")]
-    public bool invertClockwise = true;   // <-- NEW: set true if selection feels inverted
+    public bool invertClockwise = true;
 
     public PlayerInput playerInput;
 
@@ -33,63 +34,100 @@ public class WeaponWheelController : MonoBehaviour
     private int currentIndex = 0;
     private int lastHighlightedIndex = -1;
 
-    private RectTransform wheelRect;
-    private Canvas rootCanvas;
+    public RectTransform wheelRect;
+    public Canvas rootCanvas;
 
     void Awake()
     {
-        wheelAction = playerInput.actions["OpenWeaponWheel"];
-        pointAction = playerInput.actions["Look"];
-
-        wheelRect = wheelUI != null ? wheelUI.GetComponent<RectTransform>() : null;
-        rootCanvas = wheelUI != null ? wheelUI.GetComponentInParent<Canvas>() : null;
+        if (playerInput == null) playerInput = GetComponentInParent<PlayerInput>();
+        wheelAction = playerInput != null ? playerInput.actions["OpenWeaponWheel"] : null;
+        pointAction = playerInput != null ? playerInput.actions["Look"] : null;
     }
 
     void OnEnable()
     {
-        wheelAction.performed += _ => OpenWheel();
-        wheelAction.canceled += _ => CloseWheel();
+        if (wheelAction != null)
+        {
+            wheelAction.Enable();
+            wheelAction.performed += OnWheelPerformed;
+            wheelAction.canceled += OnWheelCanceled;
+        }
+        if (pointAction != null) pointAction.Enable();
+
+        SceneManager.sceneLoaded += OnSceneLoaded;
     }
 
     void OnDisable()
     {
-        wheelAction.performed -= _ => OpenWheel();
-        wheelAction.canceled -= _ => CloseWheel();
+        if (wheelAction != null)
+        {
+            wheelAction.performed -= OnWheelPerformed;
+            wheelAction.canceled -= OnWheelCanceled;
+            wheelAction.Disable();
+        }
+        if (pointAction != null) pointAction.Disable();
+
+        SceneManager.sceneLoaded -= OnSceneLoaded;
     }
+
+    void OnDestroy()
+    {
+        if (wheelAction != null)
+        {
+            wheelAction.performed -= OnWheelPerformed;
+            wheelAction.canceled -= OnWheelCanceled;
+        }
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
+    private void OnSceneLoaded(Scene s, LoadSceneMode m)
+    {
+        // Safety reset so we don't leave the game paused if a scene changes while the wheel is open
+        if (isWheelOpen)
+        {
+            isWheelOpen = false;
+            Time.timeScale = originalTimeScale;
+        }
+
+        // If your UI is scene-local, reassign these as needed (optional)
+        // wheelUI = FindObjectOfType<CanvasGroup>(); etc.
+    }
+
+    private void OnWheelPerformed(InputAction.CallbackContext _) => OpenWheel();
+    private void OnWheelCanceled(InputAction.CallbackContext _) => CloseWheel();
 
     void Update()
     {
         if (!isWheelOpen) return;
 
-        float angleDeg = ReadAimAngleDeg();                 // [0,360)
-        // Apply optional flip (CCW math -> CW UI) and offset
+        float angleDeg = ReadAimAngleDeg();
         if (invertClockwise) angleDeg = Mathf.Repeat(360f - angleDeg, 360f);
         angleDeg = Mathf.Repeat(angleDeg + angleOffsetDeg, 360f);
 
-        int weaponCount = weaponManager != null ? weaponManager.weapons.Count : 0;
-        if (weaponCount <= 0) return;
+        int count = weaponManager != null ? weaponManager.weapons.Count : 0;
+        if (count <= 0) return;
 
-        float slice = 360f / weaponCount;
-        int index = Mathf.FloorToInt(angleDeg / slice);
-        index = Mathf.Clamp(index, 0, weaponCount - 1);
+        int index = Mathf.FloorToInt(angleDeg / (360f / count));
+        index = Mathf.Clamp(index, 0, count - 1);
 
         if (index != lastHighlightedIndex)
         {
             currentIndex = index;
-            HighlightWeapon(currentIndex, weaponCount);
+            HighlightWeapon(currentIndex, count);
             lastHighlightedIndex = currentIndex;
         }
     }
 
     private float ReadAimAngleDeg()
     {
+        if (playerInput == null || pointAction == null) return 0f;
+
         string scheme = playerInput.currentControlScheme ?? "";
         if (scheme.Contains("Gamepad"))
         {
             Vector2 stick = pointAction.ReadValue<Vector2>();
             if (stick.sqrMagnitude < 0.0001f) return 0f;
-            float a = Mathf.Atan2(stick.y, stick.x) * Mathf.Rad2Deg;
-            return Mathf.Repeat(a + 360f, 360f);
+            return Mathf.Repeat(Mathf.Atan2(stick.y, stick.x) * Mathf.Rad2Deg + 360f, 360f);
         }
 
         Vector2 screenMouse = (Mouse.current != null)
@@ -98,11 +136,9 @@ public class WeaponWheelController : MonoBehaviour
 
         Vector2 center = GetWheelCenterScreenPosition();
         Vector2 delta = screenMouse - center;
-
         if (delta.sqrMagnitude < 0.0001f) return 0f;
 
-        float angleDeg = Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg;
-        return Mathf.Repeat(angleDeg + 360f, 360f);
+        return Mathf.Repeat(Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg + 360f, 360f);
     }
 
     private Vector2 GetWheelCenterScreenPosition()
@@ -120,14 +156,13 @@ public class WeaponWheelController : MonoBehaviour
     private void HighlightWeapon(int weaponIndex, int weaponCount)
     {
         if (Select_Weapons == null || Select_Weapons.Length == 0) return;
-
         int hi = Mathf.Clamp(weaponIndex, 0, Select_Weapons.Length - 1);
 
         for (int i = 0; i < Select_Weapons.Length; i++)
         {
             var img = Select_Weapons[i];
-            if (img == null) continue;
-            img.DOFade(unselectedAlpha, 0.12f).SetEase(Ease.OutSine).SetUpdate(true);
+            if (img != null)
+                img.DOFade(unselectedAlpha, 0.12f).SetEase(Ease.OutSine).SetUpdate(true);
         }
 
         var sel = Select_Weapons[hi];
@@ -140,6 +175,8 @@ public class WeaponWheelController : MonoBehaviour
     private void OpenWheel()
     {
         if (isWheelOpen) return;
+        if (wheelUI == null) return;
+
         isWheelOpen = true;
 
         originalTimeScale = Time.timeScale;
@@ -147,7 +184,6 @@ public class WeaponWheelController : MonoBehaviour
 
         wheelUI.gameObject.SetActive(true);
         wheelUI.alpha = 0f;
-
         lastHighlightedIndex = -1;
 
         wheelUI.DOFade(selectedAlpha, fadeDuration).SetUpdate(true);
@@ -158,28 +194,27 @@ public class WeaponWheelController : MonoBehaviour
         if (!isWheelOpen) return;
         isWheelOpen = false;
 
-        weaponManager.SelectWeapon(currentIndex);
+        if (weaponManager != null) weaponManager.SelectWeapon(currentIndex);
 
         Time.timeScale = originalTimeScale;
 
-        wheelUI.DOFade(0f, fadeDuration)
-               .SetUpdate(true)
-               .OnComplete(() =>
-               {
-                   if (Select_Weapons != null)
-                   {
-                       for (int i = 0; i < Select_Weapons.Length; i++)
-                       {
-                           var img = Select_Weapons[i];
-                           if (img != null)
-                           {
-                               var c = img.color;
-                               c.a = unselectedAlpha;
-                               img.color = c;
-                           }
-                       }
-                   }
-                   wheelUI.gameObject.SetActive(false);
-               });
+        if (wheelUI != null)
+        {
+            wheelUI.DOFade(0f, fadeDuration).SetUpdate(true).OnComplete(() =>
+            {
+                if (Select_Weapons != null)
+                {
+                    for (int i = 0; i < Select_Weapons.Length; i++)
+                    {
+                        var img = Select_Weapons[i];
+                        if (img != null)
+                        {
+                            var c = img.color; c.a = unselectedAlpha; img.color = c;
+                        }
+                    }
+                }
+                wheelUI.gameObject.SetActive(false);
+            });
+        }
     }
 }

@@ -1,3 +1,4 @@
+using Dan.Main;
 using DG.Tweening;
 using UnityEngine;
 
@@ -7,8 +8,10 @@ public class RemoveMainMenu : MonoBehaviour
     public CanvasGroup nameselect;
 
 
-    public void Activate()
+public void Activate()
     {
+        LeaderboardCreator.ResetPlayer();
+
         canvasGroup.DOFade(0, 0.75f).OnComplete(() =>
         {
             canvasGroup.interactable = false;
