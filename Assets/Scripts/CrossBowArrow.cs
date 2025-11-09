@@ -33,7 +33,7 @@ public class CrossBowArrow : MonoBehaviour
     {
         stuck = true;
         rb.linearVelocity = Vector2.zero;
-        rb.isKinematic = true;
+        rb.bodyType = RigidbodyType2D.Kinematic;
         rb.simulated = false;
         transform.SetParent(col.transform);
         StartCoroutine(UnstickAfterTime());

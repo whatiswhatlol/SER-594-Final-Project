@@ -67,8 +67,8 @@ MonoBehaviour:
       m_Calls: []
   m_text: Jeff----------------00:00:00
   m_isRightToLeft: 0
-  m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
-  m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+  m_fontAsset: {fileID: 11400000, guid: a8b0aa47750cfcb4f944d083b4946d6d, type: 2}
+  m_sharedMaterial: {fileID: 8467217650453380011, guid: a8b0aa47750cfcb4f944d083b4946d6d, type: 2}
   m_fontSharedMaterials: []
   m_fontMaterial: {fileID: 0}
   m_fontMaterials: []
