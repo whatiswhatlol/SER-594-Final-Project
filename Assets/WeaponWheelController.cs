@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
-using DG.Tweening;
 using UnityEngine.UI;
+using DG.Tweening;
 
 public class WeaponWheelController : MonoBehaviour
 {
@@ -13,22 +13,36 @@ public class WeaponWheelController : MonoBehaviour
     [Header("Settings")]
     public float slowTimeScale = 0.2f;
     public float fadeDuration = 0.2f;
+    public float unselectedAlpha = 0f;
+    public float selectedAlpha = 0.95f;
+
+    [Tooltip("Rotate the wheel mapping if your slice 0 should be up instead of right, etc.")]
+    public float angleOffsetDeg = 0f;
+
+    [Tooltip("Flip angle direction to match clockwise UI layouts.")]
+    public bool invertClockwise = true;   // <-- NEW: set true if selection feels inverted
+
+    public PlayerInput playerInput;
 
     private bool isWheelOpen = false;
     private float originalTimeScale = 1f;
 
-    private PlayerInput playerInput;
     private InputAction wheelAction;
-    private InputAction fireAction;
     private InputAction pointAction;
+
+    private int currentIndex = 0;
+    private int lastHighlightedIndex = -1;
+
+    private RectTransform wheelRect;
+    private Canvas rootCanvas;
 
     void Awake()
     {
-        playerInput = GetComponent<PlayerInput>();
+        wheelAction = playerInput.actions["OpenWeaponWheel"];
+        pointAction = playerInput.actions["Look"];
 
-        wheelAction = playerInput.actions["Wheel"];   
-        fireAction = playerInput.actions["Fire"];    
-        pointAction = playerInput.actions["Point"];   
+        wheelRect = wheelUI != null ? wheelUI.GetComponent<RectTransform>() : null;
+        rootCanvas = wheelUI != null ? wheelUI.GetComponentInParent<Canvas>() : null;
     }
 
     void OnEnable()
@@ -47,24 +61,80 @@ public class WeaponWheelController : MonoBehaviour
     {
         if (!isWheelOpen) return;
 
-        // Read pointer position
-        Vector2 mousePos = pointAction.ReadValue<Vector2>();
-        Vector2 center = new Vector2(Screen.width / 2f, Screen.height / 2f);
-        float angle = Mathf.Atan2(mousePos.y - center.y, mousePos.x - center.x) * Mathf.Rad2Deg;
+        float angleDeg = ReadAimAngleDeg();                 // [0,360)
+        // Apply optional flip (CCW math -> CW UI) and offset
+        if (invertClockwise) angleDeg = Mathf.Repeat(360f - angleDeg, 360f);
+        angleDeg = Mathf.Repeat(angleDeg + angleOffsetDeg, 360f);
 
-        int index = weaponManager.GetWeaponIndexByAngle(angle);
-        HighlightWeapon(index);
-        if (fireAction.WasPerformedThisFrame())
-            weaponManager.SelectWeapon(index);
+        int weaponCount = weaponManager != null ? weaponManager.weapons.Count : 0;
+        if (weaponCount <= 0) return;
+
+        float slice = 360f / weaponCount;
+        int index = Mathf.FloorToInt(angleDeg / slice);
+        index = Mathf.Clamp(index, 0, weaponCount - 1);
+
+        if (index != lastHighlightedIndex)
+        {
+            currentIndex = index;
+            HighlightWeapon(currentIndex, weaponCount);
+            lastHighlightedIndex = currentIndex;
+        }
     }
 
-    private void HighlightWeapon(int index)
+    private float ReadAimAngleDeg()
     {
-        foreach (Image img in Select_Weapons)
+        string scheme = playerInput.currentControlScheme ?? "";
+        if (scheme.Contains("Gamepad"))
         {
-            img.DOFade(0, 0.15f).SetEase(Ease.OutSine);
+            Vector2 stick = pointAction.ReadValue<Vector2>();
+            if (stick.sqrMagnitude < 0.0001f) return 0f;
+            float a = Mathf.Atan2(stick.y, stick.x) * Mathf.Rad2Deg;
+            return Mathf.Repeat(a + 360f, 360f);
         }
-        Select_Weapons[index].DOFade(0.95f,0.2f).SetEase(Ease.InSine);
+
+        Vector2 screenMouse = (Mouse.current != null)
+            ? Mouse.current.position.ReadValue()
+            : pointAction.ReadValue<Vector2>();
+
+        Vector2 center = GetWheelCenterScreenPosition();
+        Vector2 delta = screenMouse - center;
+
+        if (delta.sqrMagnitude < 0.0001f) return 0f;
+
+        float angleDeg = Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg;
+        return Mathf.Repeat(angleDeg + 360f, 360f);
+    }
+
+    private Vector2 GetWheelCenterScreenPosition()
+    {
+        if (wheelRect == null || rootCanvas == null)
+            return new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
+
+        Camera cam = null;
+        if (rootCanvas.renderMode == RenderMode.ScreenSpaceCamera)
+            cam = rootCanvas.worldCamera;
+
+        return RectTransformUtility.WorldToScreenPoint(cam, wheelRect.position);
+    }
+
+    private void HighlightWeapon(int weaponIndex, int weaponCount)
+    {
+        if (Select_Weapons == null || Select_Weapons.Length == 0) return;
+
+        int hi = Mathf.Clamp(weaponIndex, 0, Select_Weapons.Length - 1);
+
+        for (int i = 0; i < Select_Weapons.Length; i++)
+        {
+            var img = Select_Weapons[i];
+            if (img == null) continue;
+            img.DOFade(unselectedAlpha, 0.12f).SetEase(Ease.OutSine).SetUpdate(true);
+        }
+
+        var sel = Select_Weapons[hi];
+        if (sel != null)
+        {
+            sel.DOFade(selectedAlpha, 0.18f).SetEase(Ease.InSine).SetUpdate(true);
+        }
     }
 
     private void OpenWheel()
@@ -78,7 +148,9 @@ public class WeaponWheelController : MonoBehaviour
         wheelUI.gameObject.SetActive(true);
         wheelUI.alpha = 0f;
 
-        wheelUI.DOFade(0.95f, fadeDuration).SetUpdate(true);
+        lastHighlightedIndex = -1;
+
+        wheelUI.DOFade(selectedAlpha, fadeDuration).SetUpdate(true);
     }
 
     private void CloseWheel()
@@ -86,10 +158,28 @@ public class WeaponWheelController : MonoBehaviour
         if (!isWheelOpen) return;
         isWheelOpen = false;
 
+        weaponManager.SelectWeapon(currentIndex);
+
         Time.timeScale = originalTimeScale;
 
         wheelUI.DOFade(0f, fadeDuration)
                .SetUpdate(true)
-               .OnComplete(() => wheelUI.gameObject.SetActive(false));
+               .OnComplete(() =>
+               {
+                   if (Select_Weapons != null)
+                   {
+                       for (int i = 0; i < Select_Weapons.Length; i++)
+                       {
+                           var img = Select_Weapons[i];
+                           if (img != null)
+                           {
+                               var c = img.color;
+                               c.a = unselectedAlpha;
+                               img.color = c;
+                           }
+                       }
+                   }
+                   wheelUI.gameObject.SetActive(false);
+               });
     }
 }

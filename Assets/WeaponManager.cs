@@ -1,17 +1,34 @@
 using UnityEngine;
 using System.Collections.Generic;
+using UnityEngine.InputSystem;
 
 public class WeaponManager : MonoBehaviour
 {
     public List<WeaponBase> weapons = new List<WeaponBase>();
     public int currentWeaponIndex = 0;
+    public PlayerInput input;
+    private InputAction fireAction;
 
+    private void Awake()
+    {
+        fireAction = input.actions["Attack"];
+
+    }
     void Start()
     {
         weapons.AddRange(GetComponentsInChildren<WeaponBase>(true));
         SelectWeapon(0);
+
+    }
+    void OnEnable()
+    {
+        fireAction.performed += _ => Fire();
     }
 
+    void OnDisable()
+    {
+        fireAction.performed -= _ => Fire();
+    }
     public void SelectWeapon(int index)
     {
         if (index < 0 || index >= weapons.Count) return;
@@ -35,11 +52,12 @@ public class WeaponManager : MonoBehaviour
     {
         return weapons[index];
     }
-
-    void Update()
+    private void Fire()
     {
-        if (Input.GetMouseButtonDown(0) && Time.timeScale > 0.5f) // Don't fire during wheel
+        if (Time.timeScale > 0.5f) // Don't fire during wheel
         {
+            Debug.Log(weapons[currentWeaponIndex].name + " is supposed to shoot");
+
             weapons[currentWeaponIndex].Fire();
         }
     }
