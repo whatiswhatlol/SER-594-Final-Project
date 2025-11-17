@@ -6,6 +6,22 @@ using UnityEngine.SceneManagement;
 [RequireComponent(typeof(Rigidbody2D), typeof(Collider2D), typeof(PlayerInput))]
 public class PlayerController : MonoBehaviour
 {
+    // ====== SINGLETON ======
+    public static PlayerController Instance { get; private set; }
+
+    private void AwakeSingleton()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
+        Instance = this;
+
+    }
+    // ========================
+
     public Animator animator;
 
     [Header("Movement")]
@@ -26,8 +42,8 @@ public class PlayerController : MonoBehaviour
     public LayerMask groundLayer;
 
     [Header("Animation Speed")]
-    public float minAnimSpeed = 0.15f;   // don’t let the anim freeze
-    public float maxAnimSpeed = 1.5f;    // speed at full run
+    public float minAnimSpeed = 0.15f;
+    public float maxAnimSpeed = 1.5f;
     private const float AnimEpsilon = 0.001f;
 
     private Rigidbody2D rb;
@@ -43,12 +59,20 @@ public class PlayerController : MonoBehaviour
 
     private float impulseGraceTimer = 0f;
 
-    void Awake()
+    // =====================
+    //        AWAKE
+    // =====================
+    private void Awake()
     {
+        AwakeSingleton();  // SINGLETON INIT
+
         rb = GetComponent<Rigidbody2D>();
         rb.freezeRotation = true;
     }
 
+    // =====================
+    //        UPDATE
+    // =====================
     void Update()
     {
         impulseGraceTimer -= Time.deltaTime;
@@ -147,15 +171,12 @@ public class PlayerController : MonoBehaviour
 
         if (!IsGrounded())
         {
-            // In air: use normal speed
             animator.speed = 1f;
             return;
         }
 
-        // Convert speed to 0–1
         float normalized = Mathf.Clamp01(hAbs / Mathf.Max(0.001f, moveSpeed));
 
-        // Map to playback speed range
         float animSpeed = Mathf.Lerp(minAnimSpeed, maxAnimSpeed, normalized);
         animator.speed = animSpeed;
     }
@@ -166,7 +187,9 @@ public class PlayerController : MonoBehaviour
             impulseGraceTimer = duration;
     }
 
-    // Input System
+    // =====================
+    //        INPUT
+    // =====================
     public void OnMove(InputAction.CallbackContext ctx)
     {
         moveInput = ctx.ReadValue<Vector2>().x;
@@ -178,12 +201,37 @@ public class PlayerController : MonoBehaviour
         if (ctx.performed) { jumpHeld = true; }
         if (ctx.canceled) { jumpHeld = false; jumpPressed = false; }
     }
+
     public void Restart(InputAction.CallbackContext ctx)
     {
-        if (!ctx.performed) return;       
+        if (!ctx.performed) return;
         Scene current = SceneManager.GetActiveScene();
         SceneManager.LoadScene(current.buildIndex);
     }
+    public void Die()
+    {
+        animator.SetTrigger("Dead");
+        moveSpeed = 0;
+        StartCoroutine(DieRoutine());
+    }
+
+    private System.Collections.IEnumerator DieRoutine()
+    {
+        // Wait for the animation to fully start
+        yield return null;
+
+        // Wait until the current animation finishes
+        AnimatorStateInfo state = animator.GetCurrentAnimatorStateInfo(0);
+        yield return new WaitForSeconds(state.length);
+
+        // EXTRA delay (1 second)
+        yield return new WaitForSeconds(0.25f);
+
+        // Reload scene
+        Scene current = SceneManager.GetActiveScene();
+        SceneManager.LoadScene(current.buildIndex);
+    }
+
 
     private void OnTriggerEnter2D(Collider2D other)
     {

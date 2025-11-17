@@ -322,7 +322,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 3658085}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 1646334963}
+        m_TargetAssemblyTypeName: LevelSelect, Assembly-CSharp
+        m_MethodName: PlaySelected
+        m_Mode: 3
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 1
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!114 &3658085
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4171,9 +4183,9 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 0}
+  m_Sprite: {fileID: 21300000, guid: 6bd213053e5bc104ea4b3f6a78d9a888, type: 3}
   m_Type: 0
-  m_PreserveAspect: 0
+  m_PreserveAspect: 1
   m_FillCenter: 1
   m_FillMethod: 4
   m_FillAmount: 1
@@ -4962,6 +4974,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: '::'
   levelSceneNames:
   - Level1
+  - Level2
   blackout: {fileID: 2013473036}
   fadeDuration: 1
 --- !u!1 &1717932965

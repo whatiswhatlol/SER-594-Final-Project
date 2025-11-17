@@ -20,8 +20,9 @@ public class WeaponWheelController : MonoBehaviour
     public float angleOffsetDeg = 0f;
 
     [Tooltip("Flip angle direction to match clockwise UI layouts.")]
-    public bool invertClockwise = true;   // <-- NEW: set true if selection feels inverted
+    public bool invertClockwise = true;
 
+    [Header("Input")]
     public PlayerInput playerInput;
 
     private bool isWheelOpen = false;
@@ -38,35 +39,114 @@ public class WeaponWheelController : MonoBehaviour
 
     void Awake()
     {
-        wheelAction = playerInput.actions["OpenWeaponWheel"];
-        pointAction = playerInput.actions["Look"];
+        if (playerInput == null)
+            playerInput = GetComponentInParent<PlayerInput>();
 
-        wheelRect = wheelUI != null ? wheelUI.GetComponent<RectTransform>() : null;
-        rootCanvas = wheelUI != null ? wheelUI.GetComponentInParent<Canvas>() : null;
+        if (playerInput != null)
+        {
+            wheelAction = playerInput.actions["OpenWeaponWheel"];
+            pointAction = playerInput.actions["Look"];
+        }
+
+        if (wheelUI != null)
+        {
+            wheelRect = wheelUI.GetComponent<RectTransform>();
+            rootCanvas = wheelUI.GetComponentInParent<Canvas>();
+        }
     }
 
     void OnEnable()
     {
-        wheelAction.performed += _ => OpenWheel();
-        wheelAction.canceled += _ => CloseWheel();
+        // Rebind in case refs were lost on reload
+        if (playerInput == null)
+            playerInput = GetComponentInParent<PlayerInput>();
+
+        if (playerInput != null && (wheelAction == null || pointAction == null))
+        {
+            wheelAction = playerInput.actions["OpenWeaponWheel"];
+            pointAction = playerInput.actions["Look"];
+        }
+
+        if (wheelAction != null)
+        {
+            wheelAction.Enable();
+            wheelAction.performed += OnWheelPerformed;
+            wheelAction.canceled += OnWheelCanceled;
+        }
+
+        if (pointAction != null)
+            pointAction.Enable();
     }
 
     void OnDisable()
     {
-        wheelAction.performed -= _ => OpenWheel();
-        wheelAction.canceled -= _ => CloseWheel();
+        // Close safely if we got disabled mid-wheel
+        if (isWheelOpen)
+        {
+            isWheelOpen = false;
+            Time.timeScale = originalTimeScale;
+        }
+
+        // Kill active tweens so they don't try to run on a destroyed object
+        if (wheelUI != null)
+            wheelUI.DOKill();
+
+        if (Select_Weapons != null)
+        {
+            foreach (var img in Select_Weapons)
+                if (img != null) img.DOKill();
+        }
+
+        if (wheelAction != null)
+        {
+            wheelAction.performed -= OnWheelPerformed;
+            wheelAction.canceled -= OnWheelCanceled;
+            wheelAction.Disable();
+        }
+
+        if (pointAction != null)
+            pointAction.Disable();
+    }
+
+    void OnDestroy()
+    {
+        // Extra safety – in case OnDisable wasn't called
+        if (isWheelOpen)
+        {
+            isWheelOpen = false;
+            Time.timeScale = originalTimeScale;
+        }
+
+        if (wheelAction != null)
+        {
+            wheelAction.performed -= OnWheelPerformed;
+            wheelAction.canceled -= OnWheelCanceled;
+        }
+    }
+
+    private void OnWheelPerformed(InputAction.CallbackContext ctx)
+    {
+        OpenWheel();
+    }
+
+    private void OnWheelCanceled(InputAction.CallbackContext ctx)
+    {
+        CloseWheel();
     }
 
     void Update()
     {
         if (!isWheelOpen) return;
+        if (weaponManager == null) return;
 
-        float angleDeg = ReadAimAngleDeg();                 // [0,360)
-        // Apply optional flip (CCW math -> CW UI) and offset
-        if (invertClockwise) angleDeg = Mathf.Repeat(360f - angleDeg, 360f);
+        float angleDeg = ReadAimAngleDeg(); // [0,360)
+
+        if (invertClockwise)
+            angleDeg = Mathf.Repeat(360f - angleDeg, 360f);
+
         angleDeg = Mathf.Repeat(angleDeg + angleOffsetDeg, 360f);
 
-        int weaponCount = weaponManager != null ? weaponManager.weapons.Count : 0;
+        int weaponCount = weaponManager.weapons != null ? weaponManager.weapons.Count : 0;
         if (weaponCount <= 0) return;
 
         float slice = 360f / weaponCount;
@@ -83,11 +163,15 @@ public class WeaponWheelController : MonoBehaviour
 
     private float ReadAimAngleDeg()
     {
+        if (playerInput == null || pointAction == null)
+            return 0f;
+
         string scheme = playerInput.currentControlScheme ?? "";
         if (scheme.Contains("Gamepad"))
         {
             Vector2 stick = pointAction.ReadValue<Vector2>();
             if (stick.sqrMagnitude < 0.0001f) return 0f;
+
             float a = Mathf.Atan2(stick.y, stick.x) * Mathf.Rad2Deg;
             return Mathf.Repeat(a + 360f, 360f);
         }
@@ -98,7 +182,6 @@ public class WeaponWheelController : MonoBehaviour
 
         Vector2 center = GetWheelCenterScreenPosition();
         Vector2 delta = screenMouse - center;
-
         if (delta.sqrMagnitude < 0.0001f) return 0f;
 
         float angleDeg = Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg;
@@ -127,19 +210,26 @@ public class WeaponWheelController : MonoBehaviour
         {
             var img = Select_Weapons[i];
             if (img == null) continue;
-            img.DOFade(unselectedAlpha, 0.12f).SetEase(Ease.OutSine).SetUpdate(true);
+
+            img.DOFade(unselectedAlpha, 0.12f)
+               .SetEase(Ease.OutSine)
+               .SetUpdate(true);
         }
 
         var sel = Select_Weapons[hi];
         if (sel != null)
         {
-            sel.DOFade(selectedAlpha, 0.18f).SetEase(Ease.InSine).SetUpdate(true);
+            sel.DOFade(selectedAlpha, 0.18f)
+               .SetEase(Ease.InSine)
+               .SetUpdate(true);
         }
     }
 
     private void OpenWheel()
     {
         if (isWheelOpen) return;
+        if (wheelUI == null) return;
+
         isWheelOpen = true;
 
         originalTimeScale = Time.timeScale;
@@ -150,7 +240,8 @@ public class WeaponWheelController : MonoBehaviour
 
         lastHighlightedIndex = -1;
 
-        wheelUI.DOFade(selectedAlpha, fadeDuration).SetUpdate(true);
+        wheelUI.DOFade(selectedAlpha, fadeDuration)
+               .SetUpdate(true);
     }
 
     private void CloseWheel()
@@ -158,9 +249,12 @@ public class WeaponWheelController : MonoBehaviour
         if (!isWheelOpen) return;
         isWheelOpen = false;
 
-        weaponManager.SelectWeapon(currentIndex);
+        if (weaponManager != null)
+            weaponManager.SelectWeapon(currentIndex);
 
         Time.timeScale = originalTimeScale;
+
+        if (wheelUI == null) return;
 
         wheelUI.DOFade(0f, fadeDuration)
                .SetUpdate(true)
