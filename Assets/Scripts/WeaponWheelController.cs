@@ -57,11 +57,10 @@ public class WeaponWheelController : MonoBehaviour
 
     void OnEnable()
     {
-        // Rebind in case refs were lost on reload
         if (playerInput == null)
             playerInput = GetComponentInParent<PlayerInput>();
 
-        if (playerInput != null && (wheelAction == null || pointAction == null))
+        if (playerInput != null)
         {
             wheelAction = playerInput.actions["OpenWeaponWheel"];
             pointAction = playerInput.actions["Look"];
@@ -70,7 +69,7 @@ public class WeaponWheelController : MonoBehaviour
         if (wheelAction != null)
         {
             wheelAction.Enable();
-            wheelAction.performed += OnWheelPerformed;
+            wheelAction.started += OnWheelStarted;
             wheelAction.canceled += OnWheelCanceled;
         }
 
@@ -80,14 +79,12 @@ public class WeaponWheelController : MonoBehaviour
 
     void OnDisable()
     {
-        // Close safely if we got disabled mid-wheel
         if (isWheelOpen)
         {
             isWheelOpen = false;
             Time.timeScale = originalTimeScale;
         }
 
-        // Kill active tweens so they don't try to run on a destroyed object
         if (wheelUI != null)
             wheelUI.DOKill();
 
@@ -99,7 +96,7 @@ public class WeaponWheelController : MonoBehaviour
 
         if (wheelAction != null)
         {
-            wheelAction.performed -= OnWheelPerformed;
+            wheelAction.started -= OnWheelStarted;
             wheelAction.canceled -= OnWheelCanceled;
             wheelAction.Disable();
         }
@@ -110,7 +107,6 @@ public class WeaponWheelController : MonoBehaviour
 
     void OnDestroy()
     {
-        // Extra safety – in case OnDisable wasn't called
         if (isWheelOpen)
         {
             isWheelOpen = false;
@@ -119,12 +115,12 @@ public class WeaponWheelController : MonoBehaviour
 
         if (wheelAction != null)
         {
-            wheelAction.performed -= OnWheelPerformed;
+            wheelAction.started -= OnWheelStarted;
             wheelAction.canceled -= OnWheelCanceled;
         }
     }
 
-    private void OnWheelPerformed(InputAction.CallbackContext ctx)
+    private void OnWheelStarted(InputAction.CallbackContext ctx)
     {
         OpenWheel();
     }
@@ -235,8 +231,10 @@ public class WeaponWheelController : MonoBehaviour
         originalTimeScale = Time.timeScale;
         Time.timeScale = slowTimeScale;
 
-        wheelUI.gameObject.SetActive(true);
+        wheelUI.gameObject.SetActive(true);   // keep object active always
         wheelUI.alpha = 0f;
+        wheelUI.blocksRaycasts = true;
+        wheelUI.interactable = true;
 
         lastHighlightedIndex = -1;
 
@@ -260,6 +258,10 @@ public class WeaponWheelController : MonoBehaviour
                .SetUpdate(true)
                .OnComplete(() =>
                {
+                   // Don’t deactivate the GameObject – just turn off interaction
+                   wheelUI.blocksRaycasts = false;
+                   wheelUI.interactable = false;
+
                    if (Select_Weapons != null)
                    {
                        for (int i = 0; i < Select_Weapons.Length; i++)
@@ -273,7 +275,6 @@ public class WeaponWheelController : MonoBehaviour
                            }
                        }
                    }
-                   wheelUI.gameObject.SetActive(false);
                });
     }
 }
