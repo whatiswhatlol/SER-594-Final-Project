@@ -672,6 +672,6 @@ MonoBehaviour:
   fadeDuration: 0.2
   unselectedAlpha: 0
   selectedAlpha: 0.95
-  angleOffsetDeg: 90
+  angleOffsetDeg: 120
   invertClockwise: 1
   playerInput: {fileID: 0}
